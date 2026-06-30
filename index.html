@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Macro Lab — Economics Simulator</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --navy: #0F1729;
+  --navy-mid: #1A2540;
+  --navy-light: #243054;
+  --teal: #00D4AA;
+  --teal-dim: rgba(0,212,170,0.15);
+  --teal-glow: rgba(0,212,170,0.35);
+  --amber: #F5A623;
+  --coral: #FF6B6B;
+  --white: #F0EDE8;
+  --muted: rgba(240,237,232,0.55);
+  --border: rgba(240,237,232,0.08);
+  --font-display: 'Space Grotesk', sans-serif;
+  --font-body: 'Inter', sans-serif;
+}
+
+body {
+  background: var(--navy);
+  color: var(--white);
+  font-family: var(--font-body);
+  min-height: 100vh;
+  line-height: 1.5;
+}
+
+/* HEADER */
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.25rem 2rem;
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  background: rgba(15,23,41,0.92);
+  backdrop-filter: blur(12px);
+  z-index: 100;
+}
+.logo {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.1rem;
+  letter-spacing: -0.02em;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.logo-dot { width: 8px; height: 8px; background: var(--teal); border-radius: 50%; display: inline-block; }
+.header-tabs {
+  display: flex;
+  gap: 4px;
+  background: var(--navy-mid);
+  padding: 4px;
+  border-radius: 10px;
+}
+.htab {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 500;
+  padding: 6px 16px;
+  border-radius: 7px;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transition: all 0.18s;
+}
+.htab.active { background: var(--navy-light); color: var(--white); }
+.htab:hover:not(.active) { color: var(--white); }
+.header-badge {
+  font-size: 11px;
+  font-weight: 500;
+  background: var(--teal-dim);
+  color: var(--teal);
+  border: 1px solid rgba(0,212,170,0.25);
+  border-radius: 20px;
+  padding: 4px 12px;
+}
+
+/* LAYOUT */
+.app-body {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  min-height: calc(100vh - 65px);
+}
+
+/* SIDEBAR */
+.sidebar {
+  border-right: 1px solid var(--border);
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+.sidebar-section-title {
+  font-family: var(--font-display);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 0.85rem;
+}
+.slider-group { display: flex; flex-direction: column; gap: 0.75rem; }
+.slider-item {}
+.slider-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 6px;
+}
+.slider-name { font-size: 13px; color: var(--muted); font-weight: 500; }
+.slider-reading {
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--white);
+}
+input[type=range] {
+  -webkit-appearance: none;
+  width: 100%;
+  height: 4px;
+  background: var(--navy-light);
+  border-radius: 4px;
+  outline: none;
+  cursor: pointer;
+}
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  background: var(--teal);
+  border-radius: 50%;
+  box-shadow: 0 0 0 4px var(--teal-dim);
+  transition: box-shadow 0.15s;
+}
+input[type=range]::-webkit-slider-thumb:hover {
+  box-shadow: 0 0 0 6px var(--teal-glow);
+}
+.divider { border: none; border-top: 1px solid var(--border); }
+
+/* EVENT BUTTONS */
+.event-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.event-btn {
+  background: var(--navy-mid);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 10px;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.18s;
+  color: var(--white);
+}
+.event-btn:hover { border-color: rgba(240,237,232,0.2); background: var(--navy-light); }
+.event-btn.active { border-color: var(--teal); background: var(--teal-dim); }
+.event-btn.active .ev-name { color: var(--teal); }
+.ev-icon { font-size: 18px; margin-bottom: 4px; display: block; }
+.ev-name { font-family: var(--font-display); font-size: 12px; font-weight: 600; display: block; margin-bottom: 1px; }
+.ev-desc { font-size: 10px; color: var(--muted); display: block; line-height: 1.3; }
+.clear-btn {
+  width: 100%;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--muted);
+  font-size: 12px;
+  font-family: var(--font-body);
+  padding: 8px;
+  cursor: pointer;
+  margin-top: 4px;
+  transition: all 0.18s;
+}
+.clear-btn:hover { color: var(--white); border-color: rgba(240,237,232,0.2); }
+
+/* MAIN */
+.main { padding: 1.5rem 2rem; display: flex; flex-direction: column; gap: 1.5rem; }
+
+/* GAUGE */
+.gauge-row {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+  background: var(--navy-mid);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 1.5rem 2rem;
+}
+.gauge-wrap { position: relative; width: 160px; height: 90px; flex-shrink: 0; }
+#gaugeCanvas { display: block; }
+.gauge-label {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  text-align: center;
+}
+.gauge-score {
+  font-family: var(--font-display);
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1;
+  display: block;
+}
+.gauge-sub { font-size: 10px; color: var(--muted); display: block; margin-top: 2px; }
+.gauge-text { flex: 1; }
+.gauge-headline {
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  font-weight: 600;
+  margin-bottom: 0.4rem;
+  line-height: 1.3;
+}
+.gauge-body { font-size: 13px; color: var(--muted); line-height: 1.6; }
+
+/* METRICS */
+.metric-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+.metric-card {
+  background: var(--navy-mid);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 1.1rem 1.25rem;
+  position: relative;
+  overflow: hidden;
+  transition: border-color 0.3s;
+}
+.metric-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: var(--card-accent, transparent);
+  transition: background 0.3s;
+}
+.metric-card.good::before { --card-accent: var(--teal); }
+.metric-card.warn::before { --card-accent: var(--amber); }
+.metric-card.bad::before { --card-accent: var(--coral); }
+.mc-label { font-size: 11px; font-weight: 500; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.5rem; }
+.mc-value {
+  font-family: var(--font-display);
+  font-size: 2rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  margin-bottom: 0.4rem;
+}
+.mc-delta { font-size: 12px; font-weight: 500; }
+.mc-delta.up-good { color: var(--teal); }
+.mc-delta.down-good { color: var(--teal); }
+.mc-delta.up-bad { color: var(--coral); }
+.mc-delta.down-bad { color: var(--coral); }
+.mc-delta.neutral { color: var(--muted); }
+
+/* CHART */
+.chart-card {
+  background: var(--navy-mid);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 1.25rem 1.5rem;
+  flex: 1;
+}
+.chart-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+.chart-title { font-family: var(--font-display); font-size: 14px; font-weight: 600; }
+.chart-legend { display: flex; gap: 16px; }
+.legend-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--muted); }
+.legend-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.chart-wrap { position: relative; height: 180px; }
+
+/* LEARN PANEL */
+#panel-learn { display: none; }
+#panel-learn.active { display: block; }
+#panel-sim.active { display: flex; flex-direction: column; gap: 1.5rem; }
+#panel-sim { display: none; }
+.learn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.learn-card {
+  background: var(--navy-mid);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 1.25rem 1.5rem;
+}
+.learn-card-icon { font-size: 24px; margin-bottom: 0.6rem; display: block; }
+.learn-card-title { font-family: var(--font-display); font-size: 15px; font-weight: 600; margin-bottom: 0.5rem; }
+.learn-card-body { font-size: 13px; color: var(--muted); line-height: 1.65; }
+.learn-card-tag {
+  display: inline-block;
+  margin-top: 0.75rem;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--teal);
+  background: var(--teal-dim);
+  padding: 3px 10px;
+  border-radius: 20px;
+}
+
+@media (max-width: 900px) {
+  .app-body { grid-template-columns: 1fr; }
+  .sidebar { border-right: none; border-bottom: 1px solid var(--border); }
+  .metric-grid { grid-template-columns: 1fr 1fr; }
+  .learn-grid { grid-template-columns: 1fr; }
+  .gauge-row { flex-direction: column; text-align: center; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo"><span class="logo-dot"></span> Macro Lab</div>
+  <div class="header-tabs">
+    <button class="htab active" onclick="switchTab('sim')">Simulator</button>
+    <button class="htab" onclick="switchTab('learn')">Learn</button>
+  </div>
+  <div class="header-badge">High School Economics</div>
+</header>
+
+<div class="app-body">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div>
+      <p class="sidebar-section-title">Monetary policy</p>
+      <div class="slider-group">
+        <div class="slider-item">
+          <div class="slider-top">
+            <span class="slider-name">Interest rate</span>
+            <span class="slider-reading" id="out-interest">4.0%</span>
+          </div>
+          <input type="range" min="0" max="10" step="0.5" value="4" id="sl-interest" oninput="update()">
+        </div>
+        <div class="slider-item">
+          <div class="slider-top">
+            <span class="slider-name">Money supply growth</span>
+            <span class="slider-reading" id="out-money">3.0%</span>
+          </div>
+          <input type="range" min="0" max="15" step="0.5" value="3" id="sl-money" oninput="update()">
+        </div>
+      </div>
+    </div>
+    <hr class="divider">
+    <div>
+      <p class="sidebar-section-title">Fiscal policy</p>
+      <div class="slider-group">
+        <div class="slider-item">
+          <div class="slider-top">
+            <span class="slider-name">Government spending</span>
+            <span class="slider-reading" id="out-spend">£4.0T</span>
+          </div>
+          <input type="range" min="1" max="8" step="0.5" value="4" id="sl-spend" oninput="update()">
+        </div>
+        <div class="slider-item">
+          <div class="slider-top">
+            <span class="slider-name">Tax rate</span>
+            <span class="slider-reading" id="out-tax">25%</span>
+          </div>
+          <input type="range" min="10" max="50" step="1" value="25" id="sl-tax" oninput="update()">
+        </div>
+      </div>
+    </div>
+    <hr class="divider">
+    <div>
+      <p class="sidebar-section-title">Economic shocks</p>
+      <div class="event-grid">
+        <button class="event-btn" data-event="recession" onclick="triggerEvent(this)">
+          <span class="ev-icon">📉</span>
+          <span class="ev-name">Recession</span>
+          <span class="ev-desc">Demand collapses</span>
+        </button>
+        <button class="event-btn" data-event="oilshock" onclick="triggerEvent(this)">
+          <span class="ev-icon">🛢️</span>
+          <span class="ev-name">Oil shock</span>
+          <span class="ev-desc">Energy costs surge</span>
+        </button>
+        <button class="event-btn" data-event="tech" onclick="triggerEvent(this)">
+          <span class="ev-icon">🚀</span>
+          <span class="ev-name">Tech boom</span>
+          <span class="ev-desc">Productivity rises</span>
+        </button>
+        <button class="event-btn" data-event="pandemic" onclick="triggerEvent(this)">
+          <span class="ev-icon">🦠</span>
+          <span class="ev-name">Pandemic</span>
+          <span class="ev-desc">Full disruption</span>
+        </button>
+      </div>
+      <button class="clear-btn" onclick="clearEvent()">✕ Clear all shocks</button>
+    </div>
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <main class="main">
+
+    <!-- SIMULATOR TAB -->
+    <div id="panel-sim" class="active">
+
+      <!-- GAUGE ROW -->
+      <div class="gauge-row">
+        <div class="gauge-wrap">
+          <canvas id="gaugeCanvas" width="160" height="90"></canvas>
+          <div class="gauge-label">
+            <span class="gauge-score" id="gauge-score">72</span>
+            <span class="gauge-sub">Economy score</span>
+          </div>
+        </div>
+        <div class="gauge-text">
+          <p class="gauge-headline" id="gauge-headline">Economy looks stable</p>
+          <p class="gauge-body" id="gauge-body">Adjust the policy controls or trigger an economic shock to see how the indicators respond. Try raising interest rates and watch inflation respond.</p>
+        </div>
+      </div>
+
+      <!-- METRICS -->
+      <div class="metric-grid">
+        <div class="metric-card" id="card-gdp">
+          <p class="mc-label">GDP Growth</p>
+          <p class="mc-value" id="gdp-val">2.4%</p>
+          <p class="mc-delta neutral" id="gdp-delta">Baseline</p>
+        </div>
+        <div class="metric-card" id="card-inf">
+          <p class="mc-label">Inflation Rate</p>
+          <p class="mc-value" id="inf-val">2.1%</p>
+          <p class="mc-delta neutral" id="inf-delta">Baseline</p>
+        </div>
+        <div class="metric-card" id="card-unemp">
+          <p class="mc-label">Unemployment</p>
+          <p class="mc-value" id="unemp-val">4.2%</p>
+          <p class="mc-delta neutral" id="unemp-delta">Baseline</p>
+        </div>
+        <div class="metric-card" id="card-conf">
+          <p class="mc-label">Consumer Confidence</p>
+          <p class="mc-value" id="conf-val">72</p>
+          <p class="mc-delta neutral" id="conf-delta">Baseline</p>
+        </div>
+      </div>
+
+      <!-- CHART -->
+      <div class="chart-card">
+        <div class="chart-header">
+          <span class="chart-title">Historical trend</span>
+          <div class="chart-legend">
+            <div class="legend-item"><span class="legend-dot" style="background:#00D4AA"></span>GDP %</div>
+            <div class="legend-item"><span class="legend-dot" style="background:#F5A623"></span>Inflation %</div>
+            <div class="legend-item"><span class="legend-dot" style="background:#FF6B6B"></span>Unemployment %</div>
+          </div>
+        </div>
+        <div class="chart-wrap">
+          <canvas id="histChart" role="img" aria-label="Line chart showing GDP growth, inflation and unemployment over time"></canvas>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- LEARN TAB -->
+    <div id="panel-learn">
+      <div class="learn-grid">
+        <div class="learn-card">
+          <span class="learn-card-icon">📊</span>
+          <p class="learn-card-title">GDP — Gross Domestic Product</p>
+          <p class="learn-card-body">The total value of everything a country produces in a year. When GDP grows, the economy is expanding — companies earn more, workers are hired, and living standards tend to rise. Negative GDP growth for two quarters in a row is officially called a recession.</p>
+          <span class="learn-card-tag">Macro concept</span>
+        </div>
+        <div class="learn-card">
+          <span class="learn-card-icon">💸</span>
+          <p class="learn-card-title">Inflation</p>
+          <p class="learn-card-body">How fast prices rise over time. A small amount (around 2%) is healthy — it means the economy is active. Too much inflation erodes your purchasing power. Too little can signal a stagnant economy. Central banks like the Bank of England target 2%.</p>
+          <span class="learn-card-tag">Monetary policy</span>
+        </div>
+        <div class="learn-card">
+          <span class="learn-card-icon">👷</span>
+          <p class="learn-card-title">Unemployment</p>
+          <p class="learn-card-body">The share of people who want a job but can't find one. Around 4–5% is considered "full employment" — some turnover is natural as people change careers. High unemployment means wasted human potential and lower consumer spending across the economy.</p>
+          <span class="learn-card-tag">Labour market</span>
+        </div>
+        <div class="learn-card">
+          <span class="learn-card-icon">⚖️</span>
+          <p class="learn-card-title">The Phillips curve trade-off</p>
+          <p class="learn-card-body">Low unemployment tends to push inflation up — when workers are scarce, wages rise, people spend more, and prices follow. This means policymakers face a constant balancing act: stimulate too hard and inflation spikes; tighten too hard and jobs disappear.</p>
+          <span class="learn-card-tag">Key trade-off</span>
+        </div>
+        <div class="learn-card">
+          <span class="learn-card-icon">🏦</span>
+          <p class="learn-card-title">Monetary policy</p>
+          <p class="learn-card-body">The central bank's toolkit — mainly interest rates and money supply. Raise rates to slow a hot economy and fight inflation. Cut rates to stimulate growth during a downturn. In the UK this is set by the Bank of England's Monetary Policy Committee.</p>
+          <span class="learn-card-tag">Policy tool</span>
+        </div>
+        <div class="learn-card">
+          <span class="learn-card-icon">🏛️</span>
+          <p class="learn-card-title">Fiscal policy</p>
+          <p class="learn-card-body">Government decisions on spending and taxes. Spending more (or cutting taxes) injects money into the economy — a "stimulus." Spending less (or raising taxes) removes money — "austerity." Unlike monetary policy, fiscal policy is set by elected governments, not central banks.</p>
+          <span class="learn-card-tag">Policy tool</span>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+const BASE = { gdp: 2.4, inf: 2.1, unemp: 4.2, conf: 72 };
+let state = { ...BASE };
+let prev = { ...BASE };
+let eventMod = { gdp: 0, inf: 0, unemp: 0, conf: 0 };
+
+let histGdp = [], histInf = [], histUnemp = [];
+for (let i = 0; i < 19; i++) {
+  histGdp.push(+(2 + Math.random() * 0.6).toFixed(1));
+  histInf.push(+(1.8 + Math.random() * 0.5).toFixed(1));
+  histUnemp.push(+(4 + Math.random() * 0.4).toFixed(1));
+}
+histGdp.push(2.4); histInf.push(2.1); histUnemp.push(4.2);
+
+const labels = () => Array.from({ length: histGdp.length - 1 }, (_, i) => `T-${histGdp.length - 1 - i}`).concat(['Now']);
+
+const histChart = new Chart(document.getElementById('histChart'), {
+  type: 'line',
+  data: {
+    labels: labels(),
+    datasets: [
+      { label: 'GDP %', data: [...histGdp], borderColor: '#00D4AA', backgroundColor: 'transparent', tension: 0.4, pointRadius: 0, borderWidth: 2 },
+      { label: 'Inflation %', data: [...histInf], borderColor: '#F5A623', backgroundColor: 'transparent', tension: 0.4, pointRadius: 0, borderWidth: 2 },
+      { label: 'Unemployment %', data: [...histUnemp], borderColor: '#FF6B6B', backgroundColor: 'transparent', tension: 0.4, pointRadius: 0, borderWidth: 2 }
+    ]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { ticks: { font: { size: 10, family: 'Inter' }, color: 'rgba(240,237,232,0.4)', maxTicksLimit: 6, autoSkip: true }, grid: { color: 'rgba(240,237,232,0.05)' } },
+      y: { ticks: { font: { size: 10, family: 'Inter' }, color: 'rgba(240,237,232,0.4)' }, grid: { color: 'rgba(240,237,232,0.05)' }, min: -2, max: 12 }
+    }
+  }
+});
+
+function drawGauge(score) {
+  const canvas = document.getElementById('gaugeCanvas');
+  const ctx = canvas.getContext('2d');
+  const W = 160, H = 90, cx = 80, cy = 82, r = 62;
+  ctx.clearRect(0, 0, W, H);
+  const startAngle = Math.PI;
+  const endAngle = 2 * Math.PI;
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, startAngle, endAngle);
+  ctx.strokeStyle = 'rgba(240,237,232,0.08)';
+  ctx.lineWidth = 10;
+  ctx.lineCap = 'round';
+  ctx.stroke();
+  const pct = Math.min(Math.max(score, 0), 100) / 100;
+  const color = score > 70 ? '#00D4AA' : score > 40 ? '#F5A623' : '#FF6B6B';
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, startAngle, startAngle + pct * Math.PI);
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 10;
+  ctx.lineCap = 'round';
+  ctx.stroke();
+  document.getElementById('gauge-score').textContent = Math.round(score);
+  document.getElementById('gauge-score').style.color = color;
+}
+
+function calcScore(gdp, inf, unemp) {
+  let s = 50;
+  s += Math.min(Math.max(gdp, -5), 5) * 4;
+  s -= Math.abs(inf - 2) * 5;
+  s -= Math.max(unemp - 4, 0) * 4;
+  s += Math.max(4 - unemp, 0) * 2;
+  return Math.min(Math.max(s, 0), 100);
+}
+
+function getStatus(gdp, inf, unemp, conf) {
+  if (gdp < -2) return ['Deep recession', 'GDP is falling sharply and unemployment is rising fast. This is a crisis. Central banks cut interest rates while governments typically launch emergency spending programmes to stimulate demand.'];
+  if (gdp < 0) return ['Recession', 'The economy is shrinking. Companies cut costs and hiring stalls. Lower interest rates and government spending can help restart growth.'];
+  if (inf > 6) return ['Runaway inflation', 'Prices are rising dangerously fast, eroding purchasing power. The central bank needs to raise interest rates sharply — even at the cost of slowing growth.'];
+  if (inf > 4) return ['Overheating — high inflation', 'The economy is running too hot. Inflation is well above target. Policymakers will look to raise rates and curb spending to cool things down.'];
+  if (unemp > 8) return ['High unemployment', 'Too many people are out of work. A stimulus — through lower rates or more government spending — can boost demand and encourage hiring.'];
+  if (gdp > 4 && inf < 3) return ['Productivity-led boom', 'Strong growth with low inflation — the dream scenario. Often driven by technology or rising productivity. Policymakers can afford to hold rates steady.'];
+  if (gdp > 3 && unemp < 3) return ['Economy overheating', 'Growth is strong but unemployment is very low. Wage pressure is building and inflation may follow. The central bank may pre-emptively raise rates.'];
+  if (gdp > 1.5 && inf < 3 && unemp < 5.5) return ['Healthy economy', 'GDP is growing steadily, inflation is close to target, and unemployment is low. This is the "Goldilocks zone" policymakers aim for.'];
+  return ['Mixed signals', 'The indicators show a mixed picture. Try adjusting interest rates (monetary policy) or government spending (fiscal policy) to improve the balance.'];
+}
+
+function setMetric(valId, deltaId, cardId, val, base, suffix, lowerIsBetter) {
+  document.getElementById(valId).textContent = val + suffix;
+  const diff = +(val - base).toFixed(1);
+  const el = document.getElementById(deltaId);
+  const card = document.getElementById(cardId);
+  if (Math.abs(diff) < 0.05) {
+    el.textContent = 'Baseline'; el.className = 'mc-delta neutral';
+    card.className = 'metric-card'; return;
+  }
+  const improved = lowerIsBetter ? diff < 0 : diff > 0;
+  el.textContent = (diff > 0 ? '▲ +' : '▼ ') + Math.abs(diff) + suffix;
+  el.className = 'mc-delta ' + (diff > 0 ? (improved ? 'up-good' : 'up-bad') : (improved ? 'down-good' : 'down-bad'));
+  card.className = 'metric-card ' + (improved ? 'good' : (Math.abs(diff) > 1.5 ? 'bad' : 'warn'));
+}
+
+function update() {
+  const interest = +document.getElementById('sl-interest').value;
+  const spend = +document.getElementById('sl-spend').value;
+  const tax = +document.getElementById('sl-tax').value;
+  const money = +document.getElementById('sl-money').value;
+
+  document.getElementById('out-interest').textContent = interest.toFixed(1) + '%';
+  document.getElementById('out-spend').textContent = '£' + spend.toFixed(1) + 'T';
+  document.getElementById('out-tax').textContent = tax + '%';
+  document.getElementById('out-money').textContent = money.toFixed(1) + '%';
+
+  const gdp = +(BASE.gdp + (4 - interest) * 0.22 + (spend - 4) * 0.30 + (25 - tax) * 0.04 + (money - 3) * 0.08 + eventMod.gdp).toFixed(1);
+  const inf = +(BASE.inf + (money - 3) * 0.25 + (spend - 4) * 0.12 - (interest - 4) * 0.18 + eventMod.inf).toFixed(1);
+  const unemp = +(BASE.unemp - (gdp - 2.4) * 0.5 + (interest - 4) * 0.2 + (tax - 25) * 0.03 + eventMod.unemp).toFixed(1);
+  const conf = Math.round(BASE.conf + (gdp - 2.4) * 4 - (inf - 2.1) * 3 - (unemp - 4.2) * 3 + eventMod.conf);
+
+  setMetric('gdp-val', 'gdp-delta', 'card-gdp', gdp, BASE.gdp, '%', false);
+  setMetric('inf-val', 'inf-delta', 'card-inf', inf, BASE.inf, '%', false);
+  setMetric('unemp-val', 'unemp-delta', 'card-unemp', unemp, BASE.unemp, '%', true);
+  setMetric('conf-val', 'conf-delta', 'card-conf', conf, BASE.conf, '', false);
+
+  const score = calcScore(gdp, inf, unemp);
+  drawGauge(score);
+  const [headline, body] = getStatus(gdp, inf, unemp, conf);
+  document.getElementById('gauge-headline').textContent = headline;
+  document.getElementById('gauge-body').textContent = body;
+
+  histGdp.push(gdp); histInf.push(inf); histUnemp.push(unemp);
+  if (histGdp.length > 20) { histGdp.shift(); histInf.shift(); histUnemp.shift(); }
+  histChart.data.labels = labels();
+  histChart.data.datasets[0].data = [...histGdp];
+  histChart.data.datasets[1].data = [...histInf];
+  histChart.data.datasets[2].data = [...histUnemp];
+  histChart.update('none');
+}
+
+function triggerEvent(btn) {
+  document.querySelectorAll('.event-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const mods = {
+    recession: { gdp: -2.8, inf: -0.5, unemp: 3.0, conf: -18 },
+    oilshock:  { gdp: -1.2, inf: 3.5,  unemp: 1.5, conf: -12 },
+    tech:      { gdp: 2.0,  inf: 0.3,  unemp: -1.5, conf: 14 },
+    pandemic:  { gdp: -4.0, inf: 1.2,  unemp: 5.0, conf: -25 }
+  };
+  eventMod = mods[btn.dataset.event] || { gdp: 0, inf: 0, unemp: 0, conf: 0 };
+  update();
+}
+
+function clearEvent() {
+  document.querySelectorAll('.event-btn').forEach(b => b.classList.remove('active'));
+  eventMod = { gdp: 0, inf: 0, unemp: 0, conf: 0 };
+  update();
+}
+
+function switchTab(tab) {
+  document.querySelectorAll('.htab').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.htab').forEach(b => { if (b.textContent.toLowerCase().includes(tab.slice(0,3))) b.classList.add('active'); });
+  document.getElementById('panel-sim').classList.toggle('active', tab === 'sim');
+  document.getElementById('panel-sim').style.display = tab === 'sim' ? 'flex' : 'none';
+  document.getElementById('panel-learn').style.display = tab === 'learn' ? 'block' : 'none';
+}
+
+drawGauge(72);
+update();
+document.getElementById('panel-sim').style.display = 'flex';
+</script>
+</body>
+</html>
