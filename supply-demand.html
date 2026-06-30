@@ -133,6 +133,7 @@ header {
 .slider-reading { font-family: var(--font-display); font-size: 15px; font-weight: 600; color: var(--white); }
 input[type=range] { -webkit-appearance: none; width: 100%; height: 4px; background: var(--navy-light); border-radius: 4px; outline: none; cursor: pointer; }
 input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; background: var(--teal); border-radius: 50%; box-shadow: 0 0 0 4px var(--teal-dim); }
+input[type=text]:focus { border-color: var(--teal) !important; outline: none; }
 .divider { border: none; border-top: 1px solid var(--border); }
 
 .event-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
@@ -198,6 +199,24 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 16px;
 
 <div class="app-body">
   <aside class="sidebar">
+    <div>
+      <p class="sidebar-section-title">Your market</p>
+      <div class="slider-group">
+        <div class="input-item">
+          <span class="slider-name">Product or market</span>
+          <input type="text" id="product-name" placeholder="e.g. Coffee, Petrol, Housing" oninput="update()" style="width:100%; background: var(--navy); border: 1px solid var(--border); border-radius: 8px; color: var(--white); font-family: var(--font-body); font-size: 13px; padding: 8px 10px; outline: none; margin-top: 6px;">
+        </div>
+        <div style="margin-top: 8px;">
+          <div class="slider-top">
+            <span class="slider-name">Starting equilibrium price</span>
+            <span class="slider-reading" id="out-base-price">£10</span>
+          </div>
+          <input type="range" min="1" max="200" step="1" value="10" id="sl-base-price" oninput="update()">
+          <div style="display:flex; justify-content:space-between; font-size:10px; color:var(--muted); margin-top:2px;"><span>£1</span><span>£200</span></div>
+        </div>
+      </div>
+    </div>
+    <hr class="divider">
     <div>
       <p class="sidebar-section-title">Demand shifters</p>
       <div class="slider-group">
@@ -318,11 +337,28 @@ const sdChart = new Chart(document.getElementById('sdChart'), {
   }
 });
 
-function demandPrice(q, shift) { return Math.max(0, 20 - 0.2 * q + shift); }
-function supplyPrice(q, shift) { return Math.max(0, 0.2 * q + shift); }
+let BASE_PRICE = 10;
+
+function getBasePrice() {
+  return +document.getElementById('sl-base-price').value || 10;
+}
+
+function demandPrice(q, shift) {
+  const P = BASE_PRICE;
+  const slope = (2 * P) / 100;
+  return Math.max(0, 2 * P - slope * q + shift * (P / 10));
+}
+function supplyPrice(q, shift) {
+  const P = BASE_PRICE;
+  const slope = (2 * P) / 100;
+  return Math.max(0, slope * q + shift * (P / 10));
+}
 
 function findEquilibrium(dShift, sShift) {
-  const q = (20 + dShift - sShift) / 0.4;
+  const P = BASE_PRICE;
+  const slope = (2 * P) / 100;
+  const shiftScale = P / 10;
+  const q = (2 * P + dShift * shiftScale - sShift * shiftScale) / (2 * slope);
   const p = demandPrice(q, dShift);
   return { q: Math.max(0, q), p: Math.max(0, p) };
 }
@@ -367,17 +403,39 @@ function resetAll() {
 }
 
 function update() {
+  BASE_PRICE = getBasePrice();
+  const P = BASE_PRICE;
+  const slope = (2 * P) / 100;
+  const shiftScale = P / 10;
+
   const income = +document.getElementById('sl-income').value;
   const pref = +document.getElementById('sl-pref').value;
   const cost = +document.getElementById('sl-cost').value;
   const sellers = +document.getElementById('sl-sellers').value;
-  controlPrice = +document.getElementById('sl-control').value;
+  // Scale price control slider to match base price range
+  const ctrlSlider = document.getElementById('sl-control');
+  ctrlSlider.min = Math.round(P * 0.1);
+  ctrlSlider.max = Math.round(P * 2);
+  ctrlSlider.step = P >= 50 ? 1 : 0.5;
+  if (+ctrlSlider.value > P * 2) ctrlSlider.value = P;
+  controlPrice = +ctrlSlider.value;
+  const product = document.getElementById('product-name').value.trim();
 
+  document.getElementById('out-base-price').textContent = '£' + P;
   document.getElementById('out-income').textContent = (income > 0 ? '+' : '') + income;
   document.getElementById('out-pref').textContent = (pref > 0 ? '+' : '') + pref;
   document.getElementById('out-cost').textContent = (cost > 0 ? '+' : '') + cost;
   document.getElementById('out-sellers').textContent = (sellers > 0 ? '+' : '') + sellers;
   document.getElementById('out-control').textContent = '£' + controlPrice.toFixed(1);
+
+  // Update chart y-axis label with product name
+  const yLabel = product ? `Price of ${product} (£)` : 'Price (£)';
+  sdChart.options.scales.y.title.text = yLabel;
+
+  // Scale chart axes to price range
+  const yMax = P * 2.5;
+  sdChart.options.scales.y.max = yMax;
+  sdChart.options.scales.y.min = 0;
 
   demandShift = income * 0.3 + pref * 0.3 + eventMod.demand;
   supplyShift = -sellers * 0.3 + cost * 0.3 + eventMod.supply;
@@ -398,18 +456,18 @@ function update() {
 
   if (controlEnabled) {
     sdChart.data.datasets[3].data = [{ x: 0, y: controlPrice }, { x: 100, y: controlPrice }];
-    const qDemanded = (20 + demandShift - controlPrice) / 0.2;
-    const qSupplied = (controlPrice - supplyShift) / 0.2;
+    const qDemanded = (2 * P + demandShift * shiftScale - controlPrice) / slope;
+    const qSupplied = (controlPrice - supplyShift * shiftScale) / slope;
     if (controlType === 'ceiling' && controlPrice < eq.p) {
       displayPrice = controlPrice;
       displayQty = Math.max(0, Math.min(qDemanded, qSupplied));
       marketState = 'Shortage';
-      marketSub = `${Math.round(qDemanded - qSupplied)} units short`;
+      marketSub = `${Math.round(Math.abs(qDemanded - qSupplied))} units short`;
     } else if (controlType === 'floor' && controlPrice > eq.p) {
       displayPrice = controlPrice;
       displayQty = Math.max(0, Math.min(qDemanded, qSupplied));
       marketState = 'Surplus';
-      marketSub = `${Math.round(qSupplied - qDemanded)} units unsold`;
+      marketSub = `${Math.round(Math.abs(qSupplied - qDemanded))} units unsold`;
     } else {
       marketState = 'Not binding';
       marketSub = 'Control has no effect';
@@ -418,44 +476,46 @@ function update() {
     sdChart.data.datasets[3].data = [];
   }
 
-  surplusVal = Math.round(0.5 * displayQty * (20 + demandShift - displayPrice) + 0.5 * displayQty * (displayPrice - supplyShift));
+  surplusVal = Math.round(0.5 * displayQty * (2 * P + demandShift * shiftScale - displayPrice) + 0.5 * displayQty * (displayPrice - supplyShift * shiftScale));
 
   document.getElementById('eq-price').textContent = '£' + displayPrice.toFixed(2);
   document.getElementById('eq-qty').textContent = Math.round(displayQty);
   document.getElementById('market-state').textContent = marketState;
   document.getElementById('market-sub').textContent = marketSub;
-  document.getElementById('total-surplus').textContent = '£' + Math.max(0, surplusVal);
+  document.getElementById('total-surplus').textContent = '£' + Math.max(0, surplusVal).toLocaleString();
 
-  updateInsight(marketState, demandShift, supplyShift, controlEnabled, controlType);
+  updateInsight(marketState, demandShift, supplyShift, controlEnabled, controlType, product);
   sdChart.update('none');
 }
 
-function updateInsight(marketState, dShift, sShift, ctrlOn, ctrlType) {
+function updateInsight(marketState, dShift, sShift, ctrlOn, ctrlType, product) {
+  const mkt = product ? `the ${product} market` : 'this market';
+  const good = product ? product : 'this good';
   let title, body;
   if (activeEventName === 'war') {
-    title = 'War disrupts the market';
-    body = 'Armed conflict damages production capacity and breaks trade routes, sharply reducing supply — prices spike even as buyers pull back due to economic uncertainty. This combination of falling supply and falling demand makes markets highly unstable and hard for businesses to plan around.';
+    title = `War disrupts ${mkt}`;
+    body = `Armed conflict damages production capacity and breaks trade routes, sharply reducing supply of ${good} — prices spike even as buyers pull back due to uncertainty. This makes markets highly unstable.`;
   } else if (marketState === 'Shortage') {
-    title = 'Price ceiling causing a shortage';
-    body = 'When government sets a maximum price below equilibrium, more people want to buy than sellers are willing to supply at that price. This creates queues, rationing, or black markets — common with rent controls or price caps on essentials.';
+    title = `Price ceiling causing a shortage of ${good}`;
+    body = `At this controlled price, buyers want more ${good} than sellers are willing to supply. Queues, rationing, or black markets can emerge — common with rent controls or price caps on essentials.`;
   } else if (marketState === 'Surplus') {
-    title = 'Price floor causing a surplus';
-    body = 'When government sets a minimum price above equilibrium, sellers produce more than buyers want at that price. Unsold stock builds up — this is why minimum wage laws and agricultural price floors are controversial policy tools.';
+    title = `Price floor causing a surplus of ${good}`;
+    body = `At this minimum price, sellers produce more ${good} than buyers want. Unsold stock builds up — this is why agricultural price floors and minimum wage laws are controversial.`;
   } else if (ctrlOn && marketState === 'Not binding') {
     title = 'Price control has no effect';
-    body = 'This price control sits on the "wrong side" of equilibrium, so the free market price already satisfies it. A ceiling above equilibrium or a floor below it doesn\'t actually change anything.';
+    body = `The control price is on the wrong side of the equilibrium for ${mkt}, so the free market price already satisfies it and it changes nothing.`;
   } else if (dShift > 3 && sShift <= 0) {
-    title = 'Demand has outpaced supply';
-    body = 'Demand has shifted right while supply has held steady or fallen — both equilibrium price and quantity rise. This is what happens during a viral product trend or sudden popularity spike.';
+    title = `Demand for ${good} has outpaced supply`;
+    body = `Demand has shifted right while supply held steady — equilibrium price and quantity both rise in ${mkt}. This could reflect a trend, rising incomes, or changing preferences.`;
   } else if (sShift > 3 && dShift <= 0) {
-    title = 'Costs are squeezing supply';
-    body = 'Supply has shifted left (higher costs or fewer sellers), pushing equilibrium price up while quantity traded falls. This mirrors real-world supply shocks like material shortages.';
+    title = `Costs are squeezing supply of ${good}`;
+    body = `Supply has shifted left (higher costs or fewer sellers), pushing price up while quantity falls in ${mkt}. This mirrors real-world supply shocks like material shortages.`;
   } else if (sShift < -3) {
-    title = 'Supply is abundant';
-    body = 'Supply has shifted right (lower costs or more sellers), pushing equilibrium price down while quantity traded rises. Think of a bumper harvest or a manufacturing breakthrough.';
+    title = `Supply of ${good} is abundant`;
+    body = `Supply has shifted right (lower costs or more sellers), pushing price down while quantity rises in ${mkt}. Think of a bumper harvest or a manufacturing breakthrough.`;
   } else {
-    title = 'Market in equilibrium';
-    body = 'Move the sliders to shift supply or demand and watch the equilibrium price and quantity adjust. Try the price control toggle to see what happens when government sets prices artificially.';
+    title = product ? product.charAt(0).toUpperCase() + product.slice(1) + ' market in equilibrium' : 'Market in equilibrium';
+    body = `Move the sliders to shift supply or demand in ${mkt} and watch price and quantity adjust. Try the price control toggle to see what happens when government intervenes.`;
   }
   document.getElementById('insight-title').textContent = title;
   document.getElementById('insight-body').textContent = body;
