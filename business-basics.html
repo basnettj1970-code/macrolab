@@ -138,6 +138,7 @@ input[type=number] {
   padding: 8px 10px; outline: none;
 }
 input[type=number]:focus { border-color: var(--teal); }
+input[type=text]:focus { border-color: var(--teal); outline: none; }
 .divider { border: none; border-top: 1px solid var(--border); }
 
 .preset-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
@@ -195,6 +196,14 @@ input[type=number]:focus { border-color: var(--teal); }
 <div class="app-body">
   <aside class="sidebar">
     <div>
+      <p class="sidebar-section-title">Your business idea</p>
+      <div class="input-item">
+        <span class="input-label">What are you selling?</span>
+        <input type="text" id="business-idea" placeholder="e.g. Handmade candles" oninput="updateIdeaName()" style="width:100%; background: var(--navy); border: 1px solid var(--border); border-radius: 8px; color: var(--white); font-family: var(--font-body); font-size: 14px; padding: 9px 11px; outline: none;">
+      </div>
+    </div>
+    <hr class="divider">
+    <div>
       <p class="sidebar-section-title">Try a business idea</p>
       <div class="preset-grid">
         <button class="preset-btn" onclick="loadPreset('lemonade')"><span class="preset-icon">🍋</span><span class="preset-name">Lemonade stand</span></button>
@@ -237,7 +246,7 @@ input[type=number]:focus { border-color: var(--teal); }
 
     <div class="chart-card">
       <div class="chart-header">
-        <span class="chart-title">Breakeven chart</span>
+        <span class="chart-title" id="chart-title">Breakeven chart</span>
         <div class="chart-legend">
           <div class="legend-item"><span class="legend-dot" style="background:#2D6A4F"></span>Total revenue</div>
           <div class="legend-item"><span class="legend-dot" style="background:#FF6B6B"></span>Total cost</div>
@@ -262,12 +271,24 @@ const presets = {
   bakery:   { price: 4, varcost: 1.2, fixedcost: 1800, volume: 700 }
 };
 
+const presetNames = {
+  lemonade: 'Lemonade stand',
+  tshirt: 'T-shirt brand',
+  app: 'Mobile app',
+  bakery: 'Bakery'
+};
+
 function loadPreset(key) {
   const p = presets[key];
   document.getElementById('price').value = p.price;
   document.getElementById('varcost').value = p.varcost;
   document.getElementById('fixedcost').value = p.fixedcost;
   document.getElementById('volume').value = p.volume;
+  document.getElementById('business-idea').value = presetNames[key];
+  update();
+}
+
+function updateIdeaName() {
   update();
 }
 
@@ -321,26 +342,30 @@ function update() {
   bChart.data.datasets[2].data = [{ x: volume, y: revenue }];
   bChart.update('none');
 
+  const ideaLabel = document.getElementById('business-idea').value.trim();
+  document.getElementById('chart-title').textContent = ideaLabel ? `Breakeven chart — ${ideaLabel}` : 'Breakeven chart';
   updateInsight(marginPerUnit, breakeven, profit, volume);
 }
 
 function updateInsight(margin, breakeven, profit, volume) {
+  const idea = document.getElementById('business-idea').value.trim();
+  const name = idea ? `"${idea}"` : 'This business';
   let title, body;
   if (margin <= 0) {
-    title = 'This business loses money on every sale';
-    body = 'Your variable cost per unit is higher than your selling price, so every single sale loses money — more volume only makes it worse. You need to either raise the price or cut the cost of making each unit.';
+    title = `${name} loses money on every sale`;
+    body = `The variable cost per unit is higher than the selling price, so every single sale makes a loss — more volume only makes it worse. The price needs to rise or the cost of making each unit needs to fall.`;
   } else if (!isFinite(breakeven)) {
     title = 'No breakeven point exists';
     body = 'With these numbers, this business can never cover its fixed costs. Try raising the price or lowering costs.';
   } else if (profit > 0) {
-    title = `Profitable — ${(volume - breakeven).toLocaleString()} units past breakeven`;
-    body = `At ${volume.toLocaleString()} units sold, this business comfortably clears its breakeven point of ${breakeven.toLocaleString()} units. Each extra unit sold beyond that adds pure profit (minus the variable cost), since fixed costs are already covered.`;
+    title = `${name} is profitable — ${(volume - breakeven).toLocaleString()} units past breakeven`;
+    body = `At ${volume.toLocaleString()} units sold, this business clears its breakeven point of ${breakeven.toLocaleString()} units. Every unit sold beyond that adds pure contribution (price minus variable cost), since fixed costs are already covered.`;
   } else if (profit === 0) {
-    title = 'Exactly at breakeven';
-    body = 'Revenue exactly equals total costs — no profit, no loss. This is the tipping point where the business starts becoming profitable on the next sale.';
+    title = `${name} is exactly at breakeven`;
+    body = 'Revenue exactly equals total costs — no profit, no loss. This is the tipping point: one more unit sold and the business starts making a profit.';
   } else {
-    title = `Below breakeven — needs ${(breakeven - volume).toLocaleString()} more units`;
-    body = `At ${volume.toLocaleString()} units, this business hasn't yet covered its fixed costs. It needs to sell ${breakeven.toLocaleString()} units total just to break even — selling fewer than that means a loss.`;
+    title = `${name} needs ${(breakeven - volume).toLocaleString()} more units to break even`;
+    body = `At ${volume.toLocaleString()} units, the fixed costs aren't yet covered. The business needs to sell ${breakeven.toLocaleString()} units total to break even — selling fewer means a loss.`;
   }
   document.getElementById('insight-title').textContent = title;
   document.getElementById('insight-body').textContent = body;
