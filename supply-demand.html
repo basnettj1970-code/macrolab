@@ -258,6 +258,9 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 16px;
         <button class="event-btn" data-event="newtech" onclick="triggerEvent(this)">
           <span class="ev-icon">⚙️</span><span class="ev-name">New technology</span><span class="ev-desc">Cheaper to produce</span>
         </button>
+        <button class="event-btn" data-event="war" onclick="triggerEvent(this)">
+          <span class="ev-icon">⚔️</span><span class="ev-name">War</span><span class="ev-desc">Supply chains break</span>
+        </button>
       </div>
       <button class="clear-btn" onclick="resetAll()">✕ Reset everything</button>
     </div>
@@ -293,6 +296,7 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 16px;
 let demandShift = 0, supplyShift = 0;
 let controlEnabled = false, controlType = 'ceiling', controlPrice = 10;
 let eventMod = { demand: 0, supply: 0 };
+let activeEventName = null;
 
 const sdChart = new Chart(document.getElementById('sdChart'), {
   type: 'line',
@@ -339,11 +343,13 @@ function toggleControlType() {
 function triggerEvent(btn) {
   document.querySelectorAll('.event-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
+  activeEventName = btn.dataset.event;
   const mods = {
     harvest:  { demand: 0, supply: -4 },
     trend:    { demand: 4, supply: 0 },
     shortage: { demand: 0, supply: 5 },
-    newtech:  { demand: 0, supply: -3 }
+    newtech:  { demand: 0, supply: -3 },
+    war:      { demand: -2, supply: 7 }
   };
   eventMod = mods[btn.dataset.event];
   update();
@@ -351,6 +357,7 @@ function triggerEvent(btn) {
 
 function resetAll() {
   document.querySelectorAll('.event-btn').forEach(b => b.classList.remove('active'));
+  activeEventName = null;
   eventMod = { demand: 0, supply: 0 };
   ['sl-income','sl-pref','sl-cost','sl-sellers'].forEach(id => document.getElementById(id).value = 0);
   controlEnabled = false;
@@ -425,7 +432,10 @@ function update() {
 
 function updateInsight(marketState, dShift, sShift, ctrlOn, ctrlType) {
   let title, body;
-  if (marketState === 'Shortage') {
+  if (activeEventName === 'war') {
+    title = 'War disrupts the market';
+    body = 'Armed conflict damages production capacity and breaks trade routes, sharply reducing supply — prices spike even as buyers pull back due to economic uncertainty. This combination of falling supply and falling demand makes markets highly unstable and hard for businesses to plan around.';
+  } else if (marketState === 'Shortage') {
     title = 'Price ceiling causing a shortage';
     body = 'When government sets a maximum price below equilibrium, more people want to buy than sellers are willing to supply at that price. This creates queues, rationing, or black markets — common with rent controls or price caps on essentials.';
   } else if (marketState === 'Surplus') {
